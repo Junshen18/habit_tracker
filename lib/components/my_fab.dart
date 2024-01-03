@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 class MyFloatingActionButton extends StatelessWidget {
-
   final Function()? onPressed;
 
   const MyFloatingActionButton({
@@ -12,9 +11,11 @@ class MyFloatingActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+      shape: const CircleBorder(),
+      backgroundColor: Colors.green,
+      foregroundColor: Colors.white,
       onPressed: onPressed,
-      child: Icon(Icons.add),
-      );
+      child: const Icon(Icons.add),
+    );
   }
 }

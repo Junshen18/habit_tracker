@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:habit_tracker/pages/home_page.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
-void main(List<String> args) {
-  WidgetsFlutterBinding.ensureInitialized();
-  //Lock the screen only can portrait
-  SystemChrome.setPreferredOrientations([ 
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-  //Allows your app's content to extend to the edges of the screen, creating a fullscreen
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+void main() async {
+  // initialize hive
+  await Hive.initFlutter();
+
+  // open a box
+  await Hive.openBox("Habit_Database");
+
   runApp(const MyApp());
 }
 
@@ -21,7 +19,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const HomePage(),
+      home: HomePage(),
       theme: ThemeData(primarySwatch: Colors.green),
     );
   }

@@ -1,7 +1,12 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:habit_tracker/components/habit_tile.dart';
+import 'package:habit_tracker/components/month_summary.dart';
 import 'package:habit_tracker/components/my_fab.dart';
-import 'package:habit_tracker/components/my_alertbox.dart';
+import 'package:habit_tracker/components/my_alert_box.dart';
+import 'package:habit_tracker/data/habit_database.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -11,108 +16,141 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  HabitDatabase db = HabitDatabase();
+  final _myBox = Hive.box("Habit_Database");
 
-  // data structure for todays list
-  List todaysHabitList = [
-    // [ habitName, habitCompleted ]
-    ['Morning Run', false],
-    ['Read Book', false],
-    ['Code App', false],
-  ];
+  @override
+  void initState() {
+    // if there is no current habit list, then it is the 1st time ever opening the app
+    // then create default data
+    if (_myBox.get("CURRENT_HABIT_LIST") == null) {
+      db.createDefaultData();
+    }
 
-  // checkbox was tapped
-  void checkBoxTapped(bool? value, int index){
-    setState(() {
-      todaysHabitList[index][1] = value;
-    });
+    // there already exists data, this is not the first time
+    else {
+      db.loadData();
+    }
+
+    // update the database
+    db.updateDatabase();
+
+    super.initState();
   }
 
-  //create a new habit
+  // checkbox was tapped
+  void checkBoxTapped(bool? value, int index) {
+    setState(() {
+      db.todaysHabitList[index][1] = value;
+    });
+    db.updateDatabase();
+  }
+
+  // create a new habit
   final _newHabitNameController = TextEditingController();
   void createNewHabit() {
-    //show alert dialog for user to enter the new habit details
-    showDialog(context: context, builder: (context){
-      return MyAlertBox(
-        controller: _newHabitNameController,
-        hintText: 'Enter Habit Name...',
-        onSave: saveNewHabit,
-        onCancel: cancelDialogBox,
-      );
-    });
+    // show alert dialog for user to enter the new habit details
+    showDialog(
+      context: context,
+      builder: (context) {
+        return MyAlertBox(
+          controller: _newHabitNameController,
+          hintText: 'Enter habit name..',
+          onSave: saveNewHabit,
+          onCancel: cancelDialogBox,
+        );
+      },
+    );
   }
 
   // save new habit
-  void saveNewHabit(){
+  void saveNewHabit() {
     // add new habit to todays habit list
     setState(() {
-      todaysHabitList.add([_newHabitNameController.text, false]);
+      db.todaysHabitList.add([_newHabitNameController.text, false]);
     });
-    
+
     // clear textfield
     _newHabitNameController.clear();
     // pop dialog box
     Navigator.of(context).pop();
+    db.updateDatabase();
   }
 
   // cancel new habit
-  void cancelDialogBox(){
+  void cancelDialogBox() {
     // clear textfield
     _newHabitNameController.clear();
+
     // pop dialog box
     Navigator.of(context).pop();
   }
 
-  // open habit setting to edit
-  void openHabitSettings(int index){
+  // open habit settings to edit
+  void openHabitSettings(int index) {
     showDialog(
-      context: context, 
-      builder: (context){
-      return MyAlertBox(
-        controller: _newHabitNameController,
-        hintText: todaysHabitList[index][0],
-        onSave: () => saveExistingHabit(index),
-        onCancel: cancelDialogBox,
-      );
-    });
+      context: context,
+      builder: (context) {
+        return MyAlertBox(
+          controller: _newHabitNameController,
+          hintText: db.todaysHabitList[index][0],
+          onSave: () => saveExistingHabit(index),
+          onCancel: cancelDialogBox,
+        );
+      },
+    );
   }
 
   // save existing habit with a new name
-  void saveExistingHabit(int index){
+  void saveExistingHabit(int index) {
     setState(() {
-      todaysHabitList[index][0] = _newHabitNameController.text;
+      db.todaysHabitList[index][0] = _newHabitNameController.text;
     });
-    // clear textfield
     _newHabitNameController.clear();
-    // pop dialog box
-    Navigator.of(context).pop();
+    Navigator.pop(context);
+    db.updateDatabase();
   }
 
-  // delete existing habit
-  void deleteHabit(int index){
+  // delete habit
+  void deleteHabit(int index) {
     setState(() {
-      todaysHabitList.removeAt(index);
+      db.todaysHabitList.removeAt(index);
     });
+    db.updateDatabase();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[300],
-      floatingActionButton: MyFloatingActionButton(
-        onPressed: createNewHabit,
+      floatingActionButton: MyFloatingActionButton(onPressed: createNewHabit),
+      body: ListView(
+        children: [
+          // monthly summary heat map
+          MonthlySummary(
+            datasets: db.heatMapDataSet,
+            startDate: _myBox.get("START_DATE"),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Divider()),
+          // list of habits
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: db.todaysHabitList.length,
+            itemBuilder: (context, index) {
+              return HabitTile(
+                habitName: db.todaysHabitList[index][0],
+                habitCompleted: db.todaysHabitList[index][1],
+                onChanged: (value) => checkBoxTapped(value, index),
+                settingsTapped: (context) => openHabitSettings(index),
+                deleteTapped: (context) => deleteHabit(index),
+              );
+            },
+          )
+        ],
       ),
-      body: ListView.builder(
-        itemCount: todaysHabitList.length,
-        itemBuilder: (context, index){
-        return HabitTile(
-          habitName: todaysHabitList[index][0], 
-          habitCompleted: todaysHabitList[index][1], 
-          onChanged: (value) => checkBoxTapped(value, index),
-          settingsTapped: (context) => openHabitSettings(index),
-          deleteTapped: (context) => deleteHabit(index),
-          );
-          
-      }),
     );
   }
 }
