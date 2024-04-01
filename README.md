@@ -1,6 +1,8 @@
 # habit_tracker
 
-A new Flutter project.
+A habit tracker/to-do list that shows a green tracker map like github with data saved in local device and firebase
+
+![image](https://github.com/Junshen18/habit_tracker/assets/108778342/ff474a49-a583-4189-8e11-5a2f9bc29f09)
 
 ## Getting Started
 
